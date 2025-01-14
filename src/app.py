@@ -8,10 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
-from models import db, Planet
-from models import db, Vehicle
-from models import db, Character
+from models import db, User, Planet, Planet_Favorites, Vehicle, Vehicle_Favorites, Character, Character_Favorites
 
 
 
@@ -89,9 +86,10 @@ def get_planet(id):
     return jsonify (planet), 200
 
 @app.route('/planet', methods=['POST'])
-def add_planet():
+def handle_planet():
    body = request.get_json()
    print(body)
+   
    if "name" not in body:
        return jsonify({
            "msg": "Name shouldn't be empty"}), 400
@@ -108,7 +106,7 @@ def add_planet():
 
    return jsonify({"msg": "Planet created"}), 200
 
-
+    
 
 @app.route('/vehicles', methods=['GET'])
 def get_vehicles():
@@ -139,6 +137,17 @@ def add_vehicle():
 
    return jsonify({"msg": "Vehicle created"}), 200
 
+@app.route('/vehicle/<int:id>', methods=["DELETE"])
+def delete_vehicle(id):
+   body = request.get_json()
+   print(body)
+   vehicle = Vehicle.query.filter_by(vehicle["id"] == id)
+   if vehicle:
+       db.session.delete(vehicle)
+       db.session.commit()
+       return jsonify ({"msg":"vehicle deleted"}), 200
+   if vehicle is None:
+       return jsonify ({"msg":"vehicle not found"}), 404
 
 @app.route('/characters', methods=['GET'])
 def get_characters():
@@ -154,6 +163,7 @@ def get_character(id):
 
 @app.route('/character', methods=['POST'])
 def add_character():
+ if request.method == "POST": 
    body = request.get_json()
    print(body)
    if "name" not in body:
@@ -166,14 +176,115 @@ def add_character():
        return jsonify({
            "msg": "Age shouldn't be empty"}), 400
    
-   exist = Character.query.filter_by(name = body["name"]).first()
+   exist = Character.query.filter_by(name = body["name"], gender = body ["gender"], age = body ["age"]).first()
    if exist: 
        return jsonify ({"msg":"Chartacter already exists"})
-   new_character = Character(name = body["name"], gender = body ["gender"], afe = body ["age"])
+   new_character = Character(name = body["name"], gender = body ["gender"], age = body ["age"])
    db.session.add(new_character)
    db.session.commit()
 
    return jsonify({"msg": "Character created"}), 200
+ 
+ 
+
+@app.route('/character/<int:id>', methods=["DELETE"])
+def delete_character(id):
+   body = request.get_json()
+   print(body)
+   character = Character.query.filter_by(character["id"] == id)
+   if character:
+       db.session.delete(character)
+       db.session.commit()
+       return jsonify ({"msg":"character deleted"}), 200
+   if character is None:
+       return jsonify ({"msg":"character not found"}), 404
+
+
+
+
+@app.route("/favorites", methods=["GET"])
+def get_favorites():
+    all_character_favorites = Character_Favorites.query.all()
+    # all_vehicle_favorites = Vehicle_Favorites.query.all()
+    # all_planets_favorites = Planets_Favorites.query.all()
+    return jsonify ({"characters": [fav.serialize() for fav in all_character_favorites]}), 200
+
+@app.route("/favorites/characters", methods=["POST", "GET", "DELETE"])
+def manage_favorites_characters():
+    if request.method == "POST": 
+        request_body = request.get_json()
+        exist = Character_Favorites.query.filter_by(user_id=request_body["user_id"], character_id=request_body["character_id"]).first()
+        if exist:
+            return jsonify({"msg":"Favorite already exists"}), 400
+        new_favorite=Character_Favorites(user_id=request_body["user_id"], character_id=request_body["character_id"])
+        db.session.add(new_favorite)
+        db.session.commit()
+        return jsonify(new_favorite.serialize()), 200
+    if request.method == "GET": 
+        favorites= Character_Favorites.query.all()
+        return jsonify([fav.serialize() for fav in favorites])
+    if request.method == "DELETE":
+        request_body = request.get_json()
+        favorite = Character_Favorites.query.filter_by(user_id=request_body["user_id"], character_id=request_body["character_id"]).first()
+        if favorite:
+            db.session.delete(favorite)
+            db.session.commit()
+            return jsonify({"msg": "Favorite deleted"}), 200
+        else:
+            return jsonify({"msg": "Favorite not found"}), 404
+        
+@app.route("/favorite/vehicles", methods=["POST", "GET", "DELETE"])
+def manage_favorites_vehicles():
+    if request.method == "POST": 
+        request_body = request.get_json()
+        exist = Vehicle_Favorites.query.filter_by(user_id=request_body["user_id"], vehicle_id=request_body["vehicle_id"]).first()
+        if exist:
+            return jsonify({"msg":"Favorite already exists"}), 400
+        new_favorite = Vehicle_Favorites(user_id=request_body["user_id"], vehicle_id=request_body["vehicle_id"])
+        db.session.add(new_favorite)
+        db.session.commit()
+        return jsonify(new_favorite.serialize()), 200
+    if request.method == "GET": 
+        favorites= Vehicle_Favorites.query.all()
+        return jsonify([fav.serialize() for fav in favorites]), 200
+    if request.method == "DELETE":
+        request_body = request.get_json()
+        favorite = Vehicle_Favorites.query.filter_by(user_id=request_body["user_id"], vehicle_id=request_body["vehicle_id"]).first()
+        if favorite:
+            db.session.delete(favorite)
+            db.session.commit()
+            return jsonify({"msg": "Favorite deleted"}), 200
+        else:
+            return jsonify({"msg": "Favorite not found"}), 404
+
+@app.route("/favorite/planets", methods=["POST", "GET", "DELETE"])
+def manage_favorites_planets():
+    if request.method == "POST": 
+        request_body = request.get_json()
+        exist = Planet_Favorites.query.filter_by(user_id=request_body["user_id"], planet_id=request_body["planet_id"]).first()
+        if exist:
+            return jsonify({"msg": "Favorite already exists"}), 400
+        
+       
+        new_favorite = Planet_Favorites(user_id=request_body["user_id"], planet_id=request_body["planet_id"])
+        db.session.add(new_favorite)
+        db.session.commit()
+        return jsonify(new_favorite.serialize()), 200
+    
+    if request.method == "GET": 
+        favorites = Planet_Favorites.query.all()
+        return jsonify([fav.serialize() for fav in favorites]), 200
+    
+    if request.method == "DELETE":
+        request_body = request.get_json()
+        favorite = Planet_Favorites.query.filter_by(user_id=request_body["user_id"], planet_id=request_body["planet_id"]).first()
+        if favorite:
+            db.session.delete(favorite)
+            db.session.commit()
+            return jsonify({"msg": "Favorite deleted"}), 200
+        else:
+            return jsonify({"msg": "Favorite not found"}), 404
+
 
 
 # this only runs if `$ python src/app.py` is executed
