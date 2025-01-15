@@ -205,8 +205,8 @@ def delete_character(id):
 @app.route("/favorites", methods=["GET"])
 def get_favorites():
     all_character_favorites = Character_Favorites.query.all()
-    # all_vehicle_favorites = Vehicle_Favorites.query.all()
-    # all_planets_favorites = Planets_Favorites.query.all()
+    all_vehicle_favorites = Vehicle_Favorites.query.all()
+    all_planets_favorites = Planets_Favorites.query.all()
     return jsonify ({"characters": [fav.serialize() for fav in all_character_favorites]}), 200
 
 @app.route("/favorites/characters", methods=["POST", "GET", "DELETE"])
